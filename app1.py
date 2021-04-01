@@ -35,6 +35,7 @@ app = Flask(__name__)
 
 # Create a function "welcome()" with a return statement 
 def welcome():
+    session = Session(engine)
     return(
     '''
     Welcome to the Climate Analysis API!
@@ -44,17 +45,19 @@ def welcome():
     /api/v1.0/tobs
     /api/v1.0/temp/start/end
     ''')
-
+    session.close()
 # Define the precipitation route 
 @app.route("/api/v1.0/precipitation")
 
 # Define a precipitation function that will return precipitation data
 # for all dates within the previous year as a JSON file 
 def precipitation():
+    session = Session(engine)
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     precipitation = session.query(Measurement.date, Measurement.prcp).\
         filter(Measurement.date >= prev_year).all()
     precip = {date: prcp for date, prcp in precipitation}
+    session.close()
     return jsonify(precip)
 # Define the stations route 
 @app.route("/api/v1.0/stations")
@@ -62,8 +65,10 @@ def precipitation():
 # Define a stations function that will return all of the stations 
 # first as an array but finally as a JSON file 
 def stations():
+    session = Session(engine)
     results = session.query(Station.station).all()
     stations = list(np.ravel(results))
+    session.close()
     return jsonify(stations=stations)
 
 # Define the temperatures route 
@@ -73,11 +78,13 @@ def stations():
 # for all of the temps within the past year, adn return it first as a 
 # list but finally as a JSON file 
 def temp_monthly():
+    session = Session(engine)
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     results = session.query(Measurement.tobs).\
         filter(Measurement.station == 'USC00519281').\
         filter(Measurement.date >= prev_year).all()
     temps = list(np.ravel(results))
+    session.close()
     return jsonify(temps=temps)
 
 # Define the statistics route with a starting and end date 
@@ -87,8 +94,9 @@ def temp_monthly():
 # Define a statistics function that will find stats for the start and end
 # date, and return it first as a list but finally as a JSON file 
 def stats(start=None, end=None):
+    
     sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
-
+    session = Session(engine)
     if not end:
         results = session.query(*sel).\
             filter(Measurement.date >= start).\
@@ -100,4 +108,9 @@ def stats(start=None, end=None):
         filter(Measurement.date >= start).\
         filter(Measurement.date <= end).all()
     temps = list(np.ravel(results))
+    session.close()
     return jsonify(temps=temps)
+
+#Define the main behavior (to get out of "interactive" mode and run the application): 
+#if __name=="__main__":
+#    app.run(debug=True)
